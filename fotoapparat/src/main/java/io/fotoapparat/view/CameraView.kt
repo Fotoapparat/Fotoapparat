@@ -82,6 +82,7 @@ private fun ViewGroup.layoutTextureView(
 ) = when (scaleType) {
     ScaleType.CenterInside -> previewResolution?.centerInside(this)
     ScaleType.CenterCrop -> previewResolution?.centerCrop(this)
+    ScaleType.TopCrop -> previewResolution?.topCrop(this)
     else -> null
 }
 
@@ -128,6 +129,28 @@ private fun Resolution.centerCrop(view: ViewGroup) {
 
     view.layoutChildrenAt(rect)
 }
+
+private fun Resolution.topCrop(view: ViewGroup) {
+    val scale = Math.max(
+            view.measuredWidth / width.toFloat(),
+            view.measuredHeight / height.toFloat()
+    )
+
+    val width = (width * scale).toInt()
+    val height = (height * scale).toInt()
+
+    val extraX = Math.max(0, width - view.measuredWidth)
+
+    val rect = Rect(
+            -extraX / 2,
+            0,
+            width - extraX / 2,
+            height
+    )
+
+    view.layoutChildrenAt(rect)
+}
+
 
 private fun ViewGroup.layoutChildrenAt(rect: Rect) {
     (0 until childCount).forEach {
