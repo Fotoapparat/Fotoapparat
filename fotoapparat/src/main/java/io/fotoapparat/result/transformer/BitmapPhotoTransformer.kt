@@ -23,7 +23,8 @@ internal class BitmapPhotoTransformer(
                 desiredResolution = desiredResolution
         )
 
-        val decodedBitmap = input.decodeBitmap(scaleFactor) ?: throw UnableToDecodeBitmapException()
+        val decodedBitmap = input.decodeBitmap(scaleFactor, originalResolution, desiredResolution)
+                ?: throw UnableToDecodeBitmapException()
 
         val bitmap = if (decodedBitmap.width == desiredResolution.width && decodedBitmap.height == desiredResolution.height) {
             decodedBitmap
@@ -44,14 +45,28 @@ internal class BitmapPhotoTransformer(
 
 }
 
-private fun Photo.decodeBitmap(scaleFactor: Float): Bitmap? {
+private fun Photo.decodeBitmap(
+        scaleFactor: Float,
+        originalResolution: Resolution,
+        desiredResolution: Resolution
+): Bitmap? {
     val options = BitmapFactory.Options()
     options.inSampleSize = scaleFactor.toInt()
+    options.inScaled = true
+
+    if (desiredResolution.width > desiredResolution.height) {
+        options.inDensity = originalResolution.width
+        options.inTargetDensity = desiredResolution.width * options.inSampleSize
+    } else {
+        options.inDensity = originalResolution.height
+        options.inTargetDensity = desiredResolution.height * options.inSampleSize
+    }
 
     return BitmapFactory.decodeByteArray(
             encodedImage,
             0,
-            encodedImage.size
+            encodedImage.size,
+            options
     )
 }
 
