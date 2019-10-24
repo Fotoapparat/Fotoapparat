@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fotoapparat: Fotoapparat
     private lateinit var cameraZoom: Zoom.VariableZoom
 
+    private var curZoom: Float = 0f
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -148,8 +150,16 @@ class MainActivity : AppCompatActivity() {
                     capabilities
                             ?.let {
                                 (it.zoom as? Zoom.VariableZoom)
-                                        ?.let { zoom -> setupZoom(zoom) }
-                                        ?: run { zoomSeekBar.visibility = View.GONE }
+                                        ?.let {
+                                            cameraZoom = it
+                                            focusView.scaleListener = this::scaleZoom
+                                            focusView.ptrListener = this::pointerChanged
+                                        }
+                                        ?: run {
+                                            zoomLvl?.visibility = View.GONE
+                                            focusView.scaleListener = null
+                                            focusView.ptrListener = null
+                                        }
 
                                 torchSwitch.visibility = if (it.flashModes.contains(Flash.Torch)) View.VISIBLE else View.GONE
                             }
@@ -159,19 +169,27 @@ class MainActivity : AppCompatActivity() {
         switchCamera.visibility = if (fotoapparat.isAvailable(front())) View.VISIBLE else View.GONE
     }
 
-    private fun setupZoom(zoom: Zoom.VariableZoom) {
-        zoomSeekBar.max = zoom.maxZoom
-        cameraZoom = zoom
-        zoomSeekBar.visibility = View.VISIBLE
-        zoomSeekBar onProgressChanged { updateZoom(zoomSeekBar.progress) }
-        updateZoom(0)
-    }
+    //When zooming slowly, the values are approximately 0.9 ~ 1.1
+    private fun scaleZoom(scaleFactor: Float) {
+        //convert to -0.1 ~ 0.1
+        val plusZoom = if (scaleFactor < 1) -1 * (1 - scaleFactor) else scaleFactor - 1
+        val newZoom = curZoom + plusZoom
+        if (newZoom < 0 || newZoom > 1) return
 
-    private fun updateZoom(progress: Int) {
-        fotoapparat.setZoom(progress.toFloat() / zoomSeekBar.max)
+        curZoom = newZoom
+        fotoapparat.setZoom(curZoom)
+        val progress = (cameraZoom.maxZoom * curZoom).roundToInt()
         val value = cameraZoom.zoomRatios[progress]
         val roundedValue = ((value.toFloat()) / 10).roundToInt().toFloat() / 10
-        zoomLvl.text = String.format("%.1f ×", roundedValue)
+
+        zoomLvl.visibility = View.VISIBLE
+        zoomLvl.text = String.format("%.1f×", roundedValue)
+    }
+
+    private fun pointerChanged(fingerCount: Int){
+        if(fingerCount == 0) {
+            zoomLvl?.visibility = View.GONE
+        }
     }
 }
 

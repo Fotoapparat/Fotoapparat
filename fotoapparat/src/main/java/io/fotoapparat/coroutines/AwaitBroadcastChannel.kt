@@ -1,13 +1,13 @@
 package io.fotoapparat.coroutines
 
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 
 /**
  * A [ConflatedBroadcastChannel] which exposes a [getValue] which will [await] for at least one value.
  */
+@ExperimentalCoroutinesApi
 internal class AwaitBroadcastChannel<T>(
         private val channel: ConflatedBroadcastChannel<T> = ConflatedBroadcastChannel(),
         private val deferred: CompletableDeferred<Boolean> = CompletableDeferred()
@@ -31,7 +31,13 @@ internal class AwaitBroadcastChannel<T>(
         channel.send(element)
     }
 
+    override fun cancel(cause: CancellationException?) {
+        channel.cancel(cause)
+        deferred.cancel(cause)
+    }
+
     override fun cancel(cause: Throwable?): Boolean {
-        return channel.cancel(cause) && deferred.cancel(cause)
+        deferred.cancel(cause?.message ?:"", cause)
+        return channel.close(cause)
     }
 }

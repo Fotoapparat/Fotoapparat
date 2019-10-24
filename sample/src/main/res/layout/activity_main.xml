@@ -53,12 +53,6 @@
                 android:padding="20dp"
                 tools:ignore="RtlHardcoded" />
 
-            <SeekBar
-                android:id="@+id/zoomSeekBar"
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center" />
-
             <ImageView
                 android:id="@+id/switchCamera"
                 android:layout_width="wrap_content"
@@ -74,8 +68,7 @@
             android:id="@+id/zoomLvl"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal|top"
-            android:layout_marginTop="50dp"
+            android:layout_gravity="center"
             android:textColor="#FFF"
             android:textSize="20sp"
             tools:text="2.4" />

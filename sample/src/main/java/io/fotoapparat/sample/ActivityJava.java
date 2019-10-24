@@ -5,23 +5,26 @@ import android.util.Log;
 import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
-import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.util.Locale;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 import io.fotoapparat.Fotoapparat;
+import io.fotoapparat.capability.Capabilities;
 import io.fotoapparat.configuration.CameraConfiguration;
 import io.fotoapparat.configuration.UpdateConfiguration;
 import io.fotoapparat.error.CameraErrorListener;
 import io.fotoapparat.exception.camera.CameraException;
 import io.fotoapparat.parameter.ScaleType;
+import io.fotoapparat.parameter.Zoom;
 import io.fotoapparat.preview.Frame;
 import io.fotoapparat.preview.FrameProcessor;
 import io.fotoapparat.result.BitmapPhoto;
@@ -29,6 +32,8 @@ import io.fotoapparat.result.PhotoResult;
 import io.fotoapparat.result.WhenDoneListener;
 import io.fotoapparat.view.CameraView;
 import io.fotoapparat.view.FocusView;
+import kotlin.Unit;
+import kotlin.jvm.functions.Function1;
 
 import static io.fotoapparat.log.LoggersKt.fileLogger;
 import static io.fotoapparat.log.LoggersKt.logcat;
@@ -57,9 +62,13 @@ public class ActivityJava extends AppCompatActivity {
     private boolean hasCameraPermission;
     private CameraView cameraView;
     private FocusView focusView;
+    private TextView zoomLvl;
+    private ImageView switchCamera;
     private View capture;
 
     private Fotoapparat fotoapparat;
+    private Zoom.VariableZoom cameraZoom;
+    private float curZoom = 0f;
 
     boolean activeCameraBack = true;
 
@@ -92,6 +101,8 @@ public class ActivityJava extends AppCompatActivity {
         cameraView = findViewById(R.id.cameraView);
         focusView = findViewById(R.id.focusView);
         capture = findViewById(R.id.capture);
+        zoomLvl = findViewById(R.id.zoomLvl);
+        switchCamera = findViewById(R.id.switchCamera);
         hasCameraPermission = permissionsDelegate.hasCameraPermission();
 
         if (hasCameraPermission) {
@@ -105,7 +116,6 @@ public class ActivityJava extends AppCompatActivity {
         takePictureOnClick();
         switchCameraOnClick();
         toggleTorchOnSwitch();
-        zoomSeekBar();
     }
 
     private Fotoapparat createFotoapparat() {
@@ -129,15 +139,66 @@ public class ActivityJava extends AppCompatActivity {
                 .build();
     }
 
-    private void zoomSeekBar() {
-        SeekBar seekBar = findViewById(R.id.zoomSeekBar);
-
-        seekBar.setOnSeekBarChangeListener(new OnProgressChanged() {
+    private void adjustViewsVisibility() {
+        fotoapparat.getCapabilities().whenAvailable(new Function1<Capabilities, Unit>() {
             @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                fotoapparat.setZoom(progress / (float) seekBar.getMax());
+            public Unit invoke(Capabilities capabilities) {
+                Zoom zoom = capabilities != null ? capabilities.getZoom() : null;
+                if(zoom instanceof Zoom.VariableZoom){
+                    cameraZoom = (Zoom.VariableZoom) zoom;
+                    focusView.setScaleListener(new Function1<Float, Unit>() {
+                        @Override
+                        public Unit invoke(Float aFloat) {
+                            scaleZoom(aFloat);
+                            return null;
+                        }
+                    });
+                    focusView.setPtrListener(new Function1<Integer, Unit>() {
+                        @Override
+                        public Unit invoke(Integer integer) {
+                            pointerChanged(integer);
+                            return null;
+                        }
+                    });
+                } else {
+                    zoomLvl.setVisibility(View.GONE);
+                    focusView.setScaleListener(null);
+                    focusView.setPtrListener(null);
+                }
+                return null;
             }
         });
+        if (fotoapparat.isAvailable(front())){
+            switchCamera.setVisibility(View.VISIBLE);
+        } else {
+            switchCamera.setVisibility(View.GONE);
+        }
+    }
+
+    private void scaleZoom(float scaleFactor){
+        float plusZoom = 0;
+        if (scaleFactor < 1) plusZoom = -1 * (1 - scaleFactor);
+        else plusZoom = scaleFactor - 1;
+
+        float newZoom = curZoom + plusZoom;
+        if (newZoom < 0 || newZoom > 1) return;
+
+        curZoom = newZoom;
+        fotoapparat.setZoom(curZoom);
+
+        int progress = Math.round (cameraZoom.getMaxZoom() * curZoom);
+        int value = cameraZoom.getZoomRatios().get(progress);
+
+        float roundedValue = (float)(Math.round(((float)value) / 10f)) / 10f;
+
+        zoomLvl.setVisibility(View.VISIBLE);
+        zoomLvl.setText(String.format(Locale.getDefault(), "%.1f×", roundedValue));
+    }
+
+    private void pointerChanged(int fingerCount){
+        if(fingerCount == 0) {
+            zoomLvl.setVisibility(View.GONE);
+        }
     }
 
     private void switchCameraOnClick() {
@@ -180,6 +241,7 @@ public class ActivityJava extends AppCompatActivity {
                         activeCameraBack ? back() : front(),
                         cameraConfiguration
                 );
+                adjustViewsVisibility();
             }
         });
     }
@@ -223,6 +285,7 @@ public class ActivityJava extends AppCompatActivity {
         super.onStart();
         if (hasCameraPermission) {
             fotoapparat.start();
+            adjustViewsVisibility();
         }
     }
 
@@ -242,6 +305,7 @@ public class ActivityJava extends AppCompatActivity {
         if (permissionsDelegate.resultGranted(requestCode, permissions, grantResults)) {
             hasCameraPermission = true;
             fotoapparat.start();
+            adjustViewsVisibility();
             cameraView.setVisibility(View.VISIBLE);
         }
     }

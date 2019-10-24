@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.widget.FrameLayout
 import io.fotoapparat.hardware.metering.FocalRequest
 import io.fotoapparat.hardware.metering.PointF
@@ -15,7 +16,7 @@ import io.fotoapparat.parameter.Resolution
  *
  * If the camera doesn't support focus metering on specific area this will only display a visual feedback.
  */
-class FocusView
+open class FocusView
 @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
@@ -24,6 +25,15 @@ class FocusView
 
     private val visualFeedbackCircle = FeedbackCircleView(context, attrs, defStyleAttr)
     private var focusMeteringListener: ((FocalRequest) -> Unit)? = null
+
+    var scaleListener: ((Float) -> Unit)? = null
+    var ptrListener: ((Int) -> Unit)? = null
+
+    private var mPtrCount: Int = 0
+        set(value) {
+            field = value
+            ptrListener?.invoke(value)
+        }
 
     init {
         clipToPadding = false
@@ -38,6 +48,14 @@ class FocusView
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         tapDetector.onTouchEvent(event)
+        scaleDetector.onTouchEvent(event)
+
+        when (event.action and MotionEvent.ACTION_MASK) {
+            MotionEvent.ACTION_POINTER_DOWN -> mPtrCount++
+            MotionEvent.ACTION_POINTER_UP -> mPtrCount--
+            MotionEvent.ACTION_DOWN -> mPtrCount++
+            MotionEvent.ACTION_UP -> mPtrCount--
+        }
         return true
     }
 
@@ -64,4 +82,15 @@ class FocusView
     }
 
     private val tapDetector = GestureDetector(context, gestureDetectorListener)
+
+    private val scaleGestureDetector = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            return scaleListener
+                    ?.let {
+                        it(detector.scaleFactor)
+                        true
+                    }?: super.onScale(detector)
+        }
+    }
+    private val scaleDetector = ScaleGestureDetector(context, scaleGestureDetector)
 }
