@@ -9,7 +9,13 @@ import kotlinx.coroutines.runBlocking
 /**
  * Takes a photo.
  */
+
 internal fun Device.takePhoto(): Photo = runBlocking {
+    val cameraDevice = awaitSelectedCamera()
+    cameraDevice.takePhoto()
+}
+
+internal fun Device.takePhotoRestartPreview(): Photo = runBlocking {
     val cameraDevice = awaitSelectedCamera()
 
     cameraDevice.takePhoto().also {
@@ -23,3 +29,16 @@ private fun CameraDevice.startPreviewSafely() {
     } catch (ignore: CameraException) {
     }
 }
+
+internal fun Device.startPreview(): Boolean = runBlocking {
+    val cameraDevice = awaitSelectedCamera()
+    cameraDevice.startPreview()
+    true
+}
+
+internal fun Device.stopPreview(): Boolean = runBlocking {
+    val cameraDevice = awaitSelectedCamera()
+    cameraDevice.stopPreview()
+    true
+}
+

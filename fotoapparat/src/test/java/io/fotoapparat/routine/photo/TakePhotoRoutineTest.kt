@@ -30,7 +30,7 @@ internal class TakePhotoRoutineTest {
         cameraDevice.takePhoto() willReturn photo
 
         // When
-        val result = device.takePhoto()
+        val result = device.takePhotoRestartPreview()
 
         // Then
         val inOrder = inOrder(cameraDevice)
@@ -54,7 +54,7 @@ internal class TakePhotoRoutineTest {
         cameraDevice.startPreview() willThrow CameraException("test")
 
         // When
-        val result = device.takePhoto()
+        val result = device.takePhotoRestartPreview()
 
         // Then
         val inOrder = inOrder(cameraDevice)

@@ -125,4 +125,5 @@ private fun notifyOnMainThread(function: () -> Unit) {
 
 typealias CapabilitiesResult = PendingResult<Capabilities>
 typealias ParametersResult = PendingResult<CameraParameters>
+typealias BooleanResult = PendingResult<Boolean>
 

@@ -22,7 +22,10 @@ import io.fotoapparat.routine.camera.updateDeviceConfiguration
 import io.fotoapparat.routine.capability.getCapabilities
 import io.fotoapparat.routine.focus.focus
 import io.fotoapparat.routine.parameter.getCurrentParameters
+import io.fotoapparat.routine.photo.startPreview
+import io.fotoapparat.routine.photo.stopPreview
 import io.fotoapparat.routine.photo.takePhoto
+import io.fotoapparat.routine.photo.takePhotoRestartPreview
 import io.fotoapparat.routine.zoom.updateZoomLevel
 import io.fotoapparat.selector.*
 import io.fotoapparat.view.CameraRenderer
@@ -113,13 +116,55 @@ class Fotoapparat
      */
     fun takePicture(): PhotoResult {
         logger.recordMethod()
+        return takePicture(restartPreview = true)
+    }
+
+    /**
+     * Takes picture with ability to disable automatically restart preview, returns immediately.
+     *
+     * @return [PhotoResult] which will deliver result asynchronously.
+     */
+    fun takePicture(restartPreview: Boolean): PhotoResult {
+        logger.recordMethod()
 
         val future = executor.execute(Operation(
                 cancellable = true,
-                function = device::takePhoto
+                function = if(restartPreview) device::takePhotoRestartPreview else device::takePhoto
         ))
 
         return PhotoResult.fromFuture(future, logger)
+    }
+
+    /**
+     * Start preview manually, returns immediately.
+     *
+     * @return [BooleanResult] which will deliver result asynchronously.
+     */
+    fun startPreview(): BooleanResult {
+        logger.recordMethod()
+
+        val future = executor.execute(Operation(
+                cancellable = true,
+                function = device::startPreview
+        ))
+
+        return PendingResult.fromFuture(future, logger)
+    }
+
+    /**
+     * Stop preview manually, returns immediately.
+     *
+     * @return [BooleanResult] which will deliver result asynchronously.
+     */
+    fun stopPreview(): BooleanResult {
+        logger.recordMethod()
+
+        val future = executor.execute(Operation(
+                cancellable = true,
+                function = device::stopPreview
+        ))
+
+        return PendingResult.fromFuture(future, logger)
     }
 
     /**
